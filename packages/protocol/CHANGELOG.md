@@ -1,8 +1,40 @@
 # Change Log - @apibara/protocol
 
-<!-- This log was last generated on Sun, 08 Feb 2026 14:03:56 GMT and should not be manually modified. -->
+<!-- This log was last generated on Mon, 04 May 2026 11:12:40 GMT and should not be manually modified. -->
 
 <!-- Start content -->
+
+## 2.1.2
+
+Mon, 04 May 2026 11:12:40 GMT
+
+### Patches
+
+- protocol: add tracing (francesco@ceccon.me)
+
+## 2.1.0-beta.59
+
+Wed, 25 Mar 2026 19:23:23 GMT
+
+### Changes
+
+- remove logs (francesco@ceccon.me)
+
+## 2.1.0-beta.56
+
+Mon, 02 Mar 2026 04:00:12 GMT
+
+### Changes
+
+- protocol: fix clamping live blocks range (francesco@ceccon.me)
+
+## 2.1.0-beta.55
+
+Sun, 15 Feb 2026 01:50:46 GMT
+
+### Changes
+
+- protocol: enable more logs (francesco@ceccon.me)
 
 ## 2.1.0-beta.54
 

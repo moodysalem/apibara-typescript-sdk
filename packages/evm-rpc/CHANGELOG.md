@@ -1,8 +1,48 @@
 # Change Log - @apibara/evm-rpc
 
-<!-- This log was last generated on Sun, 08 Feb 2026 14:03:56 GMT and should not be manually modified. -->
+<!-- This log was last generated on Mon, 04 May 2026 11:12:40 GMT and should not be manually modified. -->
 
 <!-- Start content -->
+
+## 2.1.3
+
+Mon, 04 May 2026 11:12:40 GMT
+
+### Patches
+
+- evm-rpc: add traces (francesco@ceccon.me)
+
+## 2.1.2
+
+Thu, 30 Apr 2026 19:15:51 GMT
+
+### Patches
+
+- evm-rpc: include uniqueKey in data message (francesco@ceccon.me)
+
+## 2.1.0-beta.59
+
+Wed, 25 Mar 2026 19:23:23 GMT
+
+### Changes
+
+- remove logs (francesco@ceccon.me)
+
+## 2.1.0-beta.56
+
+Mon, 02 Mar 2026 04:00:12 GMT
+
+### Changes
+
+- protocol: fix clamping live blocks range (francesco@ceccon.me)
+
+## 2.1.0-beta.55
+
+Sun, 15 Feb 2026 01:50:46 GMT
+
+### Changes
+
+- evm-rpc: add debug logs (francesco@ceccon.me)
 
 ## 2.1.0-beta.54
 

@@ -1,6 +1,7 @@
 {
   "name": "@apibara/plugin-drizzle",
-  "version": "2.1.0-beta.53",
+  "version": "2.1.2",
+  "repository": "apibara/typescript-sdk",
   "type": "module",
   "files": [
     "dist",

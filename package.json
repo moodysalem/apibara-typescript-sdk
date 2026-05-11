@@ -19,30 +19,16 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.1",
-    "beachball": "^2.47.1",
+    "beachball": "^2.65.0",
     "turbo": "^2.1.2",
     "typescript": "^5.6.2"
   },
-  "packageManager": "pnpm@9.10.0",
+  "packageManager": "pnpm@10.24.0",
   "beachball": {
-    "prereleasePrefix": "beta",
-    "groups": [
-      {
-        "name": "v2-prerelease",
-        "include": [
-          "packages/beaconchain",
-          "packages/cli",
-          "packages/evm",
-          "packages/evm-rpc",
-          "packages/indexer",
-          "packages/protocol",
-          "packages/starknet",
-          "packages/plugin-drizzle",
-          "packages/plugin-mongo",
-          "packages/plugin-sqlite"
-        ]
-      }
+    "disallowedChangeTypes": [
+      "major"
     ],
+    "changehint": "Run 'pnpm beachball change' to generate a change file",
     "ignorePatterns": [
       "examples/**"
     ]
