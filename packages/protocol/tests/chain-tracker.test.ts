@@ -33,16 +33,39 @@ class TestChain {
     return this.block(blockNumber);
   };
 
-  fetchCursorRange = async ({
-    startBlockNumber,
-    endBlockNumber,
-  }: FetchCursorRangeArgs): Promise<BlockInfo[]> => {
+  /** Every range this chain was asked for, so tests can count requests. */
+  readonly rangeCalls: FetchCursorRangeArgs[] = [];
+  /** Every hash this chain was asked for. */
+  readonly hashCalls: Bytes[] = [];
+
+  fetchCursorByHashCounted = async (
+    blockHash: Bytes,
+  ): Promise<BlockInfo | null> => {
+    this.hashCalls.push(blockHash);
+    return this.fetchCursorByHash(blockHash);
+  };
+
+  fetchCursorRange = async (
+    args: FetchCursorRangeArgs,
+  ): Promise<BlockInfo[]> => {
+    this.rangeCalls.push(args);
     const blocks: BlockInfo[] = [];
-    for (let bn = startBlockNumber; bn <= endBlockNumber; bn++) {
+    for (let bn = args.startBlockNumber; bn <= args.endBlockNumber; bn++) {
       blocks.push(this.block(bn));
     }
     return blocks;
   };
+
+  /** Total blocks the tracker asked this chain for. */
+  get blocksFetched(): number {
+    return (
+      this.rangeCalls.reduce(
+        (total, { startBlockNumber, endBlockNumber }) =>
+          total + Number(endBlockNumber - startBlockNumber + 1n),
+        0,
+      ) + this.hashCalls.length
+    );
+  }
 }
 
 function tracker(chain: TestChain, head: bigint, finalized: bigint) {
@@ -92,6 +115,63 @@ describe("ChainTracker.updateFinalized", () => {
 
     expect(result.status).toBe("success");
     expect(ct.head().orderKey).toBe(109n);
+  });
+});
+
+describe("ChainTracker.updateHead request count", () => {
+  it("fetches one block when the head advances by many", async () => {
+    const chain = new TestChain();
+    const ct = tracker(chain, 100n, 98n);
+
+    const result = await ct.updateHead({
+      newHead: chain.block(120n),
+      fetchCursorByHash: chain.fetchCursorByHashCounted,
+      fetchCursorRange: chain.fetchCursorRange,
+    });
+
+    expect(result.status).toBe("success");
+    expect(ct.head().orderKey).toBe(120n);
+
+    // One lookup, at the old head's height, rather than one per block in
+    // between.
+    expect(chain.rangeCalls).toEqual([
+      { startBlockNumber: 100n, endBlockNumber: 100n },
+    ]);
+    expect(chain.blocksFetched).toBe(1);
+  });
+
+  it("costs the same whether the head advances by 2 blocks or by 2000", async () => {
+    const near = new TestChain();
+    const nearTracker = tracker(near, 100n, 98n);
+    await nearTracker.updateHead({
+      newHead: near.block(102n),
+      fetchCursorByHash: near.fetchCursorByHashCounted,
+      fetchCursorRange: near.fetchCursorRange,
+    });
+
+    const far = new TestChain();
+    const farTracker = tracker(far, 100n, 98n);
+    await farTracker.updateHead({
+      newHead: far.block(2100n),
+      fetchCursorByHash: far.fetchCursorByHashCounted,
+      fetchCursorRange: far.fetchCursorRange,
+    });
+
+    expect(near.blocksFetched).toBe(1);
+    expect(far.blocksFetched).toBe(1);
+  });
+
+  it("does not fetch anything when the head advances by one", async () => {
+    const chain = new TestChain();
+    const ct = tracker(chain, 100n, 98n);
+
+    await ct.updateHead({
+      newHead: chain.block(101n),
+      fetchCursorByHash: chain.fetchCursorByHashCounted,
+      fetchCursorRange: chain.fetchCursorRange,
+    });
+
+    expect(chain.blocksFetched).toBe(0);
   });
 });
 

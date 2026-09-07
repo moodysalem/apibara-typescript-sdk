@@ -25,20 +25,21 @@ export class ChainTracker {
   #finalized: BlockInfo;
   #head: BlockInfo;
   #canonical: Map<bigint, BlockInfo>;
-  #batchSize: bigint;
 
   constructor({
     head,
     finalized,
-    batchSize,
   }: {
     finalized: BlockInfo;
     head: BlockInfo;
-    batchSize: bigint;
+    /**
+     * @deprecated No longer used. `updateHead` connects the two heads with a
+     * single lookup, so there is no longer a range of blocks to batch.
+     */
+    batchSize?: bigint;
   }) {
     this.#finalized = finalized;
     this.#head = head;
-    this.#batchSize = batchSize;
 
     this.#canonical = new Map([
       [finalized.blockNumber, finalized],
@@ -185,53 +186,40 @@ export class ChainTracker {
       });
     }
 
-    // In all other cases we need to "join" the new head with the existing chain.
-    // The new chain is longer and we need the missing blocks.
-    // This may result in reorgs.
+    // In all other cases we need to "join" the new head with the existing
+    // chain. The new chain is longer and we have to decide whether it extends
+    // the chain we know about or replaces part of it.
+    //
+    // This used to walk every block between the two heads, checking that each
+    // one's parent hash matched the block before it. That costs one request
+    // per block produced since the last refresh, which on a chain producing
+    // blocks faster than the refresh interval is most of the requests the
+    // stream makes.
+    //
+    // One request answers the same question. Ask the chain for the block it
+    // now has at the old head's height: the node returns it from the chain
+    // that ends at `newHead`, so if it is still the old head then the old head
+    // is on that chain and the two are connected. If it is a different block,
+    // the chain reorganized at or below the old head and the walk below finds
+    // the block the two chains still agree on.
 
     // console.log(
     //   `[CT] moving from ${this.#head.blockNumber} to ${newHead.blockNumber} (${newHead.blockNumber - this.#head.blockNumber} blocks)`,
     // );
 
-    let currentBlockNumber = this.#head.blockNumber + 1n;
+    const [atOldHead] = await fetchCursorRange({
+      startBlockNumber: this.#head.blockNumber,
+      endBlockNumber: this.#head.blockNumber,
+    });
 
-    while (true) {
-      let endBlockNumber = currentBlockNumber + this.#batchSize;
-      if (endBlockNumber > newHead.blockNumber) {
-        endBlockNumber = newHead.blockNumber;
-      }
-
-      const missing = await fetchCursorRange({
-        startBlockNumber: currentBlockNumber,
-        endBlockNumber,
+    if (!atOldHead || atOldHead.blockHash !== this.#head.blockHash) {
+      return await this.#reconcileToCommonAncestor({
+        block: newHead,
+        fetchCursorByHash,
       });
-
-      for (const block of missing) {
-        const canonicalParent = this.#canonical.get(block.blockNumber - 1n);
-        if (
-          !canonicalParent ||
-          canonicalParent.blockHash !== block.parentBlockHash
-        ) {
-          // The chain reorganized between the head refresh and this fetch, so
-          // the blocks we just received do not extend the chain we know about.
-          // Walk back to the common ancestor and report the reorg; the caller
-          // invalidates from there and the next iteration moves forward again.
-          return await this.#reconcileToCommonAncestor({
-            block,
-            fetchCursorByHash,
-          });
-        }
-
-        this.#canonical.set(block.blockNumber, block);
-      }
-
-      if (endBlockNumber === newHead.blockNumber) {
-        break;
-      }
-
-      currentBlockNumber = endBlockNumber + 1n;
     }
 
+    this.#canonical.set(newHead.blockNumber, newHead);
     this.#head = newHead;
 
     return { status: "success" };
@@ -390,11 +378,14 @@ export class ChainTracker {
 export function createChainTracker({
   head,
   finalized,
-  batchSize,
 }: {
   head: BlockInfo;
   finalized: BlockInfo;
-  batchSize: bigint;
+  /**
+   * @deprecated No longer used. `updateHead` connects the two heads with a
+   * single lookup, so there is no longer a range of blocks to batch.
+   */
+  batchSize?: bigint;
 }): ChainTracker {
-  return new ChainTracker({ finalized, head, batchSize });
+  return new ChainTracker({ finalized, head });
 }
