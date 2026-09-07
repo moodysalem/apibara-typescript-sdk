@@ -161,6 +161,39 @@ describe("ChainTracker.updateHead request count", () => {
     expect(far.blocksFetched).toBe(1);
   });
 
+  it("walks back from the fork rather than from the new head on a reorg", async () => {
+    const chain = new TestChain();
+    const ct = tracker(chain, 100n, 98n);
+
+    for (const blockNumber of [101n, 102n]) {
+      await ct.updateHead({
+        newHead: chain.block(blockNumber),
+        fetchCursorByHash: chain.fetchCursorByHashCounted,
+        fetchCursorRange: chain.fetchCursorRange,
+      });
+    }
+
+    // The chain forks at 101 and the new head is 3 blocks past the old one.
+    const forked = new TestChain("b", 101n);
+    const result = await ct.updateHead({
+      newHead: forked.block(105n),
+      fetchCursorByHash: forked.fetchCursorByHashCounted,
+      fetchCursorRange: forked.fetchCursorRange,
+    });
+
+    expect(result).toEqual({
+      status: "reorg",
+      cursor: { orderKey: 100n, uniqueKey: chain.hash(100n) },
+    });
+
+    // One lookup at the old head's height, then one step back to the ancestor.
+    // The blocks between the old head and the new one are never fetched.
+    expect(forked.rangeCalls).toEqual([
+      { startBlockNumber: 102n, endBlockNumber: 102n },
+    ]);
+    expect(forked.hashCalls).toHaveLength(1);
+  });
+
   it("does not fetch anything when the head advances by one", async () => {
     const chain = new TestChain();
     const ct = tracker(chain, 100n, 98n);

@@ -213,8 +213,12 @@ export class ChainTracker {
     });
 
     if (!atOldHead || atOldHead.blockHash !== this.#head.blockHash) {
+      // Walk back from the block the new chain has at the old head's height,
+      // not from the new head: the two chains diverge at or below that height,
+      // so starting there skips the blocks above it, which are on the new
+      // chain and cannot be the common ancestor.
       return await this.#reconcileToCommonAncestor({
-        block: newHead,
+        block: atOldHead ?? newHead,
         fetchCursorByHash,
       });
     }
